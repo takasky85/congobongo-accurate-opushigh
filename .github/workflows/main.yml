@@ -7,8 +7,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+      build:
     runs-on: windows-latest
+    
+    # ── ADD THESE PERMISSIONS HERE ──
+    permissions:
+      contents: write
+    # --------------------------------
     
     steps:
       - name: Checkout repository
