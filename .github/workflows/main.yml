@@ -2,8 +2,8 @@ name: Build and Release with DLLs
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
 
 jobs:
   build:
