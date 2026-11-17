@@ -7,6 +7,8 @@ circuit models, so no audio samples are needed**.
 
 You supply your own ROMs. None are included.
 
+Of course Claude helped!
+
 ## Build (Windows, MSYS2 UCRT64)
 
 One time:
