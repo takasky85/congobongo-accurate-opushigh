@@ -1,0 +1,38 @@
+name: Build for Windows
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 UCRT64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-sdl3
+            mingw-w64-ucrt-x86_64-pkgconf
+
+      - name: Compile project using build.sh
+        shell: msys2 {0}
+        run: |
+          ./build.sh
+
+      - name: Upload built binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: congobongo-windows-binaries
+          path: |
+            congobongo.exe
+            congobongo
+            SDL3.dll
