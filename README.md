@@ -7,7 +7,7 @@ circuit models, so no audio samples are needed**.
 
 You supply your own ROMs. None are included.
 
-Of course Claude helped! I fed Claude the board schematics and the arcade manual and voila, emulation of the analog sound. I think the drums are very accurate, but the gorilla sound is still kind of an approximation. Would love for someone who has played the actual real arcade game recently to try it and let me know what they think.
+Congo Bongo remains on the list of MAME games that still require samples. I never like that because in some versions the drums sounded really off. I fed Claude the board schematics and the arcade manual and voila, emulation of the analog sound. I think the drums are very accurate, but the gorilla sound is still kind of an approximation. Would love for someone who has played the actual real arcade game recently to try it and let me know what they think. 
 
 ## Build (Windows, MSYS2 UCRT64)
 
