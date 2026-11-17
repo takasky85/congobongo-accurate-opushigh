@@ -54,12 +54,14 @@ jobs:
           fi
           echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Create Zip Archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path congobongo.exe, SDL3.dll, libwinpthread-1.dll, libiconv-2.dll -DestinationPath congobongo-windows.zip -Force
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
-            congobongo.exe
-            SDL3.dll
-            libwinpthread-1.dll
-            libiconv-2.dll
+            congobongo-windows.zip
