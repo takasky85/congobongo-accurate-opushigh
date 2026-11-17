@@ -1,4 +1,4 @@
-name: Build with MSYS2
+name: Build SDL3 Project with MSYS2
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup MSYS2
+      - name: Setup MSYS2 and SDL3
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -25,6 +25,8 @@ jobs:
           install: >-
             base-devel
             mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-sdl3
 
       - name: Run build.sh
         run: |
