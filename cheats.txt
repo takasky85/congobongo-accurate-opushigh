@@ -1,0 +1,4 @@
+; Congo Bongo cheats of your own.  One per line:  Name = hex address:hex value, more pairs after commas
+; Addresses are main RAM, 8000-8FFF.  A leading * switches the cheat on at start-up.
+; INFINITE CREDITS / LIVES / BONUS, INVINCIBLE and WALK ON WATER are built in and need no line here.
+; Use Esc > CHEATS > RAM FINDER in the emulator to find more addresses; it appends new cheats below.

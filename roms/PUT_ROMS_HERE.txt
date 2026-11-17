@@ -1,0 +1,4 @@
+Put your MAME Congo Bongo ROM set here: congo.zip
+(for the Tip Top set also tiptop.zip together with congo.zip).
+Loose ROM files work too. ROMs are recognised by their CRC32, so the file
+names do not matter. No ROMs are included with this program.
