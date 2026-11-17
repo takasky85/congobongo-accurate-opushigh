@@ -1,9 +1,9 @@
-name: Build for Windows
+name: Build and Release
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
+    tags:
+      - 'v*'
 
 jobs:
   build:
@@ -27,12 +27,15 @@ jobs:
         shell: msys2 {0}
         run: |
           ./build.sh
+          # Explicitly copy required runtime DLLs next to the executable
+          cp /ucrt64/bin/libwinpthread-1.dll .
+          cp /ucrt64/bin/libiconv-2.dll .
 
-      - name: Upload built binaries
-        uses: actions/upload-artifact@v4
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
-          name: congobongo-windows-binaries
-          path: |
+          files: |
             congobongo.exe
-            congobongo
             SDL3.dll
+            libwinpthread-1.dll
+            libiconv-2.dll
