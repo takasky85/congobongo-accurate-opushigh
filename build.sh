@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds congobongo (needs a C++17 compiler and SDL3).
 #
-# MSYS2 UCRT64 (Windows), one time:
+# on Windows: MSYS2 UCRT64 (Windows), one time:
 #   pacman -S mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-sdl3 mingw-w64-ucrt-x86_64-pkgconf
 # Linux:  install your distro's SDL3 development package.
 set -e
