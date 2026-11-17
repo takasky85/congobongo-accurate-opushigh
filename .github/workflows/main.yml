@@ -40,9 +40,22 @@ jobs:
             exit 1
           fi
 
+      - name: Generate Tag for Manual Runs
+        id: tag
+        shell: bash
+        run: |
+          # If triggered by a push tag, use that tag. If manual, generate a timestamp-based tag.
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="v0.0.0-manual-$(date +'%Y%m%d-%H%M%S')"
+          fi
+          echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.tag.outputs.tag_name }}
           files: |
             congobongo.exe
             SDL3.dll
