@@ -21,8 +21,10 @@ jobs:
           update: true
           install: >-
             mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-SDL3
+            mingw-w64-ucrt-x86_64-sdl3
             make
+
+            
 
       - name: Run build
         run: bash ./build.sh
