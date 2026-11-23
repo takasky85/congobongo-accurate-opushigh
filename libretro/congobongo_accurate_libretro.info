@@ -1,8 +1,8 @@
 # Software Information
-display_name = "Sega - Congo Bongo (Congo Bongo)"
+display_name = "Sega - Congo Bongo (Congo Bongo, accurate audio)"
 authors = "takasky85"
 supported_extensions = "zip"
-corename = "Congo Bongo"
+corename = "Congo Bongo (accurate)"
 categories = "Emulator"
 license = "See README (MAME-derived parts BSD-3-Clause)"
 permissions = ""
@@ -30,4 +30,4 @@ needs_fullpath = "true"
 disk_control = "false"
 is_experimental = "false"
 
-description = "Congo Bongo / Tip Top (Sega, 1983). Runs the real sound ROM and synthesizes the analog drums and gorilla from circuit models, so no samples are needed. Load the MAME congo.zip (rev C) or tiptop.zip (with congo.zip beside it)."
+description = "Congo Bongo / Tip Top (Sega, 1983), board-accurate audio variant: adds the control board's real output filter and full headroom. Runs the real sound ROM and synthesizes the analog drums and gorilla from circuit models, so no samples are needed. Load the MAME congo.zip (rev C) or tiptop.zip (with congo.zip beside it)."

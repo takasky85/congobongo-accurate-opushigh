@@ -1,4 +1,28 @@
-# Congo Bongo / Tip Top emulator (SDL3)
+# Congo Bongo / Tip Top emulator, board-accurate audio variant
+
+This is a separate copy of [congobongoarcadenosamples](https://github.com/takasky85/congobongoarcadenosamples).
+The emulation is the same. The difference is the final audio output stage, which here follows the arcade
+schematics instead of settings chosen by ear:
+
+* **Control-board output filter.** SOU from the sound board goes through a unity-gain 3rd-order Sallen-Key
+  low-pass on the 834-5166 control board before the volume pot and power amp (R91, R82, R81 = 10K,
+  C56 = 1500 pF, C54 = 3900 pF, C55 = 220 pF). It is flat to 10 kHz and -3 dB at about 14.7 kHz. The emulator
+  computes it from those part values (bilinear transform, pre-warped at the corner).
+* **Full headroom.** The original output used a gain of 1.4 into a tanh soft clip, which turned the loudest
+  drum and gorilla peaks down by about 25%. The real U12 summing amp has roughly twice the swing of the loudest
+  peaks, so nothing is compressed here. A limiter only acts above 90% of full scale (very high volume settings).
+  This makes the output about 2.5 dB quieter on average.
+* **No 8 kHz treble cut by default.** The old default was a guess at the cabinet speaker. It is still
+  available as SPEAKER CUT (off, 12, 8, 5, 3 kHz).
+
+The original sound is one setting away: OUTPUT STAGE = CLASSIC plus SPEAKER CUT = 8 KHZ (in the libretro core:
+"Output stage: classic" and "Extra speaker low-pass: 8 kHz").
+
+The libretro core is built as `congobongo_accurate_libretro` with its own option names, so it installs next
+to the original core.
+
+## Original README
+
 
 A small, standalone emulator of Sega's 1983 arcade game, written for SDL3 in
 one C++ file plus a Z80 core. The sound board runs the **real sound ROM**; the

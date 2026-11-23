@@ -48,8 +48,8 @@ static void logf(enum retro_log_level lvl, const char *fmt, ...)
 {
 	char buf[512];
 	va_list ap; va_start(ap, fmt); vsnprintf(buf, sizeof buf, fmt, ap); va_end(ap);
-	if (log_cb) log_cb(lvl, "[CongoBongo] %s", buf);
-	else fprintf(stderr, "[CongoBongo] %s", buf);
+	if (log_cb) log_cb(lvl, "[CongoBongoAcc] %s", buf);
+	else fprintf(stderr, "[CongoBongoAcc] %s", buf);
 }
 
 static void show_msg(const char *text, unsigned frames)
@@ -62,21 +62,22 @@ static void show_msg(const char *text, unsigned frames)
 /*  Core options                                                       */
 /* ------------------------------------------------------------------ */
 static const struct retro_variable VARS[] = {
-	{ "congobongo_rotate",      "Screen orientation; vertical (arcade)|horizontal" },
-	{ "congobongo_start_coin",  "Start button inserts a coin; enabled|disabled" },
-	{ "congobongo_lives",       "Lives; 3|4|5|free play" },
-	{ "congobongo_bonus",       "Bonus life at; 10000|20000|30000|40000" },
-	{ "congobongo_difficulty",  "Difficulty; medium|easy|hard|hardest" },
-	{ "congobongo_inf_lives",   "Cheat: infinite lives; disabled|enabled" },
-	{ "congobongo_inf_credits", "Cheat: infinite credits; disabled|enabled" },
-	{ "congobongo_inf_bonus",   "Cheat: bonus timer never runs down; disabled|enabled" },
-	{ "congobongo_invincible",  "Cheat: invincible (congo rev C only); disabled|enabled" },
-	{ "congobongo_walk_water",  "Cheat: walk on water (congo rev C only); disabled|enabled" },
-	{ "congobongo_treble",      "Treble cut (speaker low-pass); 8 kHz|12 kHz|5 kHz|3 kHz|off" },
-	{ "congobongo_bass_soft",   "Soften bass drum edge; enabled|disabled" },
-	{ "congobongo_vol_music",   "Music and beeps volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
-	{ "congobongo_vol_drums",   "Drums volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
-	{ "congobongo_vol_gorilla", "Gorilla volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
+	{ "congobongo_acc_rotate",      "Screen orientation; vertical (arcade)|horizontal" },
+	{ "congobongo_acc_start_coin",  "Start button inserts a coin; enabled|disabled" },
+	{ "congobongo_acc_lives",       "Lives; 3|4|5|free play" },
+	{ "congobongo_acc_bonus",       "Bonus life at; 10000|20000|30000|40000" },
+	{ "congobongo_acc_difficulty",  "Difficulty; medium|easy|hard|hardest" },
+	{ "congobongo_acc_inf_lives",   "Cheat: infinite lives; disabled|enabled" },
+	{ "congobongo_acc_inf_credits", "Cheat: infinite credits; disabled|enabled" },
+	{ "congobongo_acc_inf_bonus",   "Cheat: bonus timer never runs down; disabled|enabled" },
+	{ "congobongo_acc_invincible",  "Cheat: invincible (congo rev C only); disabled|enabled" },
+	{ "congobongo_acc_walk_water",  "Cheat: walk on water (congo rev C only); disabled|enabled" },
+	{ "congobongo_acc_output",      "Output stage; board (arcade filter, full headroom)|classic (original emulator)" },
+	{ "congobongo_acc_treble",      "Extra speaker low-pass; off|12 kHz|8 kHz|5 kHz|3 kHz" },
+	{ "congobongo_acc_bass_soft",   "Soften bass drum edge; enabled|disabled" },
+	{ "congobongo_acc_vol_music",   "Music and beeps volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
+	{ "congobongo_acc_vol_drums",   "Drums volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
+	{ "congobongo_acc_vol_gorilla", "Gorilla volume; 100%|0%|25%|50%|75%|125%|150%|175%|200%" },
 	{ NULL, NULL },
 };
 
@@ -107,46 +108,47 @@ static void apply_options(bool initial)
 	Machine &m = M;
 
 	bool rot = true;
-	if (const char *v = getvar("congobongo_rotate")) rot = strcmp(v, "horizontal") != 0;
+	if (const char *v = getvar("congobongo_acc_rotate")) rot = strcmp(v, "horizontal") != 0;
 	if (rot != rotate_view || initial) { rotate_view = rot; if (!initial) set_geometry(false); }
 
-	start_coins = var_on("congobongo_start_coin", true);
+	start_coins = var_on("congobongo_acc_start_coin", true);
 
 	/* DIP switch 02: bonus (bits 0-1), difficulty (2-3), lives (4-5), 0x40 = upright cabinet */
 	int b = 0x03, d = 0x04, l = 0x30;
-	if (const char *v = getvar("congobongo_bonus")) {
+	if (const char *v = getvar("congobongo_acc_bonus")) {
 		if (!strcmp(v, "20000")) b = 0x01; else if (!strcmp(v, "30000")) b = 0x02; else if (!strcmp(v, "40000")) b = 0x00;
 	}
-	if (const char *v = getvar("congobongo_difficulty")) {
+	if (const char *v = getvar("congobongo_acc_difficulty")) {
 		if (!strcmp(v, "easy")) d = 0x0c; else if (!strcmp(v, "hard")) d = 0x08; else if (!strcmp(v, "hardest")) d = 0x00;
 	}
-	if (const char *v = getvar("congobongo_lives")) {
+	if (const char *v = getvar("congobongo_acc_lives")) {
 		if (!strcmp(v, "4")) l = 0x10; else if (!strcmp(v, "5")) l = 0x20; else if (!strcmp(v, "free play")) l = 0x00;
 	}
 	m.dsw02 = (uint8_t)(b | d | l | 0x40);
 
-	int tr = 2;
-	if (const char *v = getvar("congobongo_treble")) {
-		if (!strcmp(v, "off")) tr = 0; else if (!strcmp(v, "12 kHz")) tr = 1; else if (!strcmp(v, "5 kHz")) tr = 3; else if (!strcmp(v, "3 kHz")) tr = 4;
+	int tr = 0;
+	if (const char *v = getvar("congobongo_acc_treble")) {
+		if (!strcmp(v, "12 kHz")) tr = 1; else if (!strcmp(v, "8 kHz")) tr = 2; else if (!strcmp(v, "5 kHz")) tr = 3; else if (!strcmp(v, "3 kHz")) tr = 4;
 	}
 	m.set_treble(tr);
-	m.bass_soft = var_on("congobongo_bass_soft", true);
-	m.vol_psg = var_pct("congobongo_vol_music");
-	m.vol_perc = var_pct("congobongo_vol_drums");
-	m.vol_gor = var_pct("congobongo_vol_gorilla");
+	{ const char *v = getvar("congobongo_acc_output"); m.out_classic = v && !strncmp(v, "classic", 7); }
+	m.bass_soft = var_on("congobongo_acc_bass_soft", true);
+	m.vol_psg = var_pct("congobongo_acc_vol_music");
+	m.vol_perc = var_pct("congobongo_acc_vol_drums");
+	m.vol_gor = var_pct("congobongo_acc_vol_gorilla");
 
 	/* cheats (same addresses and patches as the standalone emulator's built-in cheats) */
 	m.pokes.clear();
-	if (var_on("congobongo_inf_credits", false)) m.pokes.push_back({ 0x8012, 0x99 });
-	if (var_on("congobongo_inf_lives", false))   m.pokes.push_back({ 0x8220, 0x06 });
-	if (var_on("congobongo_inf_bonus", false))   m.pokes.push_back({ 0x8304, 0x99 });
+	if (var_on("congobongo_acc_inf_credits", false)) m.pokes.push_back({ 0x8012, 0x99 });
+	if (var_on("congobongo_acc_inf_lives", false))   m.pokes.push_back({ 0x8220, 0x06 });
+	if (var_on("congobongo_acc_inf_bonus", false))   m.pokes.push_back({ 0x8304, 0x99 });
 	static const uint8_t NOHIT[7]  = { 0xAF, 0x32, 0x0D, 0x84, 0xC3, 0x0E, 0x1E };   /* XOR A; LD (840D),A; JP 1E0E */
 	static const uint8_t NOFALL[7] = { 0xAF, 0x32, 0x17, 0x84, 0xC3, 0xCD, 0x1E };   /* XOR A; LD (8417),A; JP 1ECD */
-	if (var_on("congobongo_invincible", false)) {
+	if (var_on("congobongo_acc_invincible", false)) {
 		if (known_rom) for (int i = 0; i < 7; i++) { m.pokes.push_back({ (uint16_t)(0x1DDF + i), NOHIT[i] }); m.pokes.push_back({ (uint16_t)(0x1DF9 + i), NOHIT[i] }); }
 		else if (!initial) show_msg("Invincible cheat needs the congo rev C program", 180);
 	}
-	if (var_on("congobongo_walk_water", false)) {
+	if (var_on("congobongo_acc_walk_water", false)) {
 		if (known_rom) for (int i = 0; i < 7; i++) m.pokes.push_back({ (uint16_t)(0x1E45 + i), NOFALL[i] });
 		else if (!initial) show_msg("Walk on water cheat needs the congo rev C program", 180);
 	}
@@ -181,7 +183,7 @@ RETRO_API void retro_set_controller_port_device(unsigned, unsigned) {}
 RETRO_API void retro_get_system_info(struct retro_system_info *info)
 {
 	memset(info, 0, sizeof *info);
-	info->library_name     = "Congo Bongo";
+	info->library_name     = "Congo Bongo (accurate)";
 	info->library_version  = CB_VERSION;
 	info->valid_extensions = "zip";
 	info->need_fullpath    = true;     /* the core opens the zip itself (and congo.zip beside tiptop.zip) */
@@ -399,7 +401,7 @@ static void sync_state(Ser &s)
 	s.v(m.custom); s.v(m.soundlatch);
 	s.v(m.psg1); s.v(m.psg2); s.v(m.ppi); s.v(m.perc); s.v(m.gorilla);
 	s.v(m.mute); s.v(m.armed); s.v(m.last_pb); s.v(m.last_pc); s.v(m.next_snd_irq); s.v(m.dc_x); s.v(m.dc_y);
-	s.v(m.bs_z1); s.v(m.bs_z2); s.v(m.lp_z1); s.v(m.lp_z2);
+	s.v(m.bs_z1); s.v(m.bs_z2); s.v(m.lp_z1); s.v(m.lp_z2); s.v(m.bf_z);
 	s.v(m.main_target); s.v(m.snd_target); s.v(m.sample_no); s.v(m.frame_cyc); s.v(m.vb_done); s.v(m.frame_done);
 	s.v(m.frames); s.v(m.skip_pending);
 	s.v(prev_coin); s.v(prev_start); s.v(auto_start);

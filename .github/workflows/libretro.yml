@@ -30,24 +30,24 @@ jobs:
         run: |
           "$ANDROID_NDK_LATEST_HOME/ndk-build" -C libretro/jni -j"$(nproc)"
           mkdir -p out
-          cp libretro/libs/armeabi-v7a/libretro.so out/congobongo_libretro_android.so
-          cp libretro/congobongo_libretro.info out/
-          file out/congobongo_libretro_android.so
+          cp libretro/libs/armeabi-v7a/libretro.so out/congobongo_accurate_libretro_android.so
+          cp libretro/congobongo_accurate_libretro.info out/
+          file out/congobongo_accurate_libretro_android.so
           ls -l out
 
       - name: Package core zip (.so + .info)
-        run: cd out && zip -9 ../congobongo_libretro_android_armeabi-v7a.zip congobongo_libretro_android.so congobongo_libretro.info
+        run: cd out && zip -9 ../congobongo_accurate_libretro_android_armeabi-v7a.zip congobongo_accurate_libretro_android.so congobongo_accurate_libretro.info
 
       - uses: actions/upload-artifact@v4
         with:
-          name: congobongo_libretro_android_armeabi-v7a
-          path: congobongo_libretro_android_armeabi-v7a.zip
+          name: congobongo_accurate_libretro_android_armeabi-v7a
+          path: congobongo_accurate_libretro_android_armeabi-v7a.zip
 
       - name: Release (core-v* tags only)
         if: startsWith(github.ref, 'refs/tags/core-v')
         uses: softprops/action-gh-release@v2
         with:
-          files: congobongo_libretro_android_armeabi-v7a.zip
+          files: congobongo_accurate_libretro_android_armeabi-v7a.zip
 
   linux-x86_64:
     runs-on: ubuntu-latest
@@ -57,5 +57,5 @@ jobs:
         run: make -C libretro -j"$(nproc)"
       - uses: actions/upload-artifact@v4
         with:
-          name: congobongo_libretro_linux_x86_64
-          path: libretro/congobongo_libretro.so
+          name: congobongo_accurate_libretro_linux_x86_64
+          path: libretro/congobongo_accurate_libretro.so

@@ -1,7 +1,7 @@
 # Congo Bongo libretro core
-#   make                       -> congobongo_libretro.so (Linux) / .dll (Windows) / .dylib (macOS)
+#   make                       -> congobongo_accurate_libretro.so (Linux) / .dll (Windows) / .dylib (macOS)
 #   Android: ndk-build -C jni   (see jni/Android.mk), or the GitHub Actions workflow
-TARGET_NAME := congobongo
+TARGET_NAME := congobongo_accurate
 
 ifeq ($(platform),)
   platform = unix
