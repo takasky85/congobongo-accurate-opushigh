@@ -11,6 +11,11 @@ on:
       - '.github/workflows/libretro.yml'
     tags:
       - 'core-v*'
+  pull_request:
+    paths:
+      - 'libretro/**'
+      - 'congobongo.cpp'
+      - '.github/workflows/libretro.yml'
   workflow_dispatch:
 
 jobs:
