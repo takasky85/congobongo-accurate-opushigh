@@ -570,7 +570,47 @@ struct Machine {
 		bs_b0 = (1 - c) / 2 / a0; bs_b1 = (1 - c) / a0; bs_b2 = bs_b0; bs_a1 = -2 * c / a0; bs_a2 = (1 - al) / a0;
 		bs_z1 = bs_z2 = 0;
 	}
-	/* optional output low-pass ("speaker roll-off"): 2-pole Butterworth */
+	/* Output stage.  BOARD (default): the audio chain of the 834-5166 control board, which takes SOU from the sound
+	 * board -- a unity-gain 3rd-order Sallen-Key low-pass in front of the volume pot (R91, R82, R81 = 10K,
+	 * C56 = 1500 pF, C54 = 3900 pF feedback, C55 = 220 pF; -3 dB at about 14.7 kHz, flat to 10 kHz) -- and an output
+	 * gain with enough headroom that nothing the game plays is compressed (the real U12 summing amp has about
+	 * twice the swing of the loudest peaks).  A limiter only acts above 0.9 of full scale (very high volume settings).
+	 * CLASSIC: the original emulator's output (no board filter, gain 1.4 into a tanh soft clip). */
+	bool out_classic = false;
+	double bf_b[4] = { 1, 0, 0, 0 }, bf_a[4] = { 1, 0, 0, 0 }, bf_z[3] = { 0, 0, 0 };
+	void set_board_filter()
+	{
+		const double R1 = 10e3, R2 = 10e3, R3 = 10e3, C1 = 1500e-12, C2 = 3900e-12, C3 = 220e-12;
+		/* H(s) = 1 / (1 + a1 s + a2 s^2 + a3 s^3) */
+		const double a1 = C3 * (R1 + R2 + R3) + C1 * R1;
+		const double a2 = C1 * C3 * R1 * (R2 + R3) + C2 * C3 * R3 * (R1 + R2);
+		const double a3 = R1 * R2 * R3 * C1 * C2 * C3;
+		/* bilinear transform, pre-warped at the -3 dB frequency so the corner stays where the circuit has it */
+		const double PI = 3.14159265358979323846, fc = 14655.0;
+		const double w = 2 * PI * fc, K = w / std::tan(w / (2.0 * RATE));
+		const double k1 = a1 * K, k2 = a2 * K * K, k3 = a3 * K * K * K;
+		/* (1+z)^3 + k1 (1-z)(1+z)^2 + k2 (1-z)^2 (1+z) + k3 (1-z)^3, z = z^-1 */
+		const double d[4] = { 1 + k1 + k2 + k3, 3 + k1 - k2 - 3 * k3, 3 - k1 - k2 + 3 * k3, 1 - k1 + k2 - k3 };
+		const double n[4] = { 1, 3, 3, 1 };
+		for (int i = 0; i < 4; i++) { bf_b[i] = n[i] / d[0]; bf_a[i] = d[i] / d[0]; }
+		bf_z[0] = bf_z[1] = bf_z[2] = 0;
+	}
+	double board_filter(double x)
+	{
+		const double y = bf_b[0] * x + bf_z[0];
+		bf_z[0] = bf_b[1] * x - bf_a[1] * y + bf_z[1];
+		bf_z[1] = bf_b[2] * x - bf_a[2] * y + bf_z[2];
+		bf_z[2] = bf_b[3] * x - bf_a[3] * y;
+		return y;
+	}
+	static double limit(double o)
+	{
+		const double a = std::fabs(o);
+		if (a <= 0.9) return o;
+		return std::copysign(0.9 + 0.1 * std::tanh((a - 0.9) / 0.1), o);
+	}
+
+	/* optional extra output low-pass ("speaker roll-off"): 2-pole Butterworth */
 	double lp_b0 = 1, lp_b1 = 0, lp_b2 = 0, lp_a1 = 0, lp_a2 = 0, lp_z1 = 0, lp_z2 = 0;
 	bool lp_on = false;
 	void set_treble(int mode)
@@ -689,7 +729,7 @@ struct Machine {
 		psg1.init(4000000.0); psg2.init(1000000.0);
 		memset(&ppi, 0, sizeof ppi);
 		ppi.a_in = ppi.b_in = ppi.cu_in = ppi.cl_in = 1;
-		perc.set_rate(RATE, 1.0 / 2.216); perc.reset(); set_bass_filter();
+		perc.set_rate(RATE, 1.0 / 2.216); perc.reset(); set_bass_filter(); set_board_filter();
 		gorilla.reset();
 		mute = true; armed = false; last_pb = last_pc = 0xff;
 		next_snd_irq = 16384; dc_x = dc_y = 0;
@@ -1009,17 +1049,18 @@ struct Machine {
 		if (mute) x = 0;       /* SOU MUTE silences the whole output until the sound ROM gets command 0x30 */
 		sample_no++;
 
-		/* AC coupling, gain, soft clip */
+		/* control-board low-pass (BOARD output stage), AC coupling, gain */
+		if (!out_classic) x = board_filter(x);
 		double y = x - dc_x + 0.9995 * dc_y;
 		dc_x = x; dc_y = y;
-		double o = y * volume * 1.4;
+		double o = y * volume * (out_classic ? 1.4 : 1.0);
 		if (lp_on) {
 			double z = lp_b0 * o + lp_z1;
 			lp_z1 = lp_b1 * o - lp_a1 * z + lp_z2;
 			lp_z2 = lp_b2 * o - lp_a2 * z;
 			o = z;
 		}
-		o = std::tanh(o);
+		o = out_classic ? std::tanh(o) : limit(o);
 		audio.push_back((int16_t)std::lrint(o * 32000.0));
 	}
 
@@ -1206,7 +1247,8 @@ struct Settings {
 	int window_scale = 0;    /* 0 = AUTO (largest whole-number size that fits the screen), else 1x, 2x, ... */
 	int vol_master = 100, vol_psg = 100, vol_perc = 100, vol_gor = 100, vol_bass = 100;   /* percent, 0..200 */
 	int bass_soft = 1;       /* rounded bass-drum edges (removes the click) */
-	int treble = 2;          /* output low-pass: 0 off, 1 12 kHz, 2 8 kHz, 3 5 kHz, 4 3 kHz */
+	int treble = 0;          /* extra speaker low-pass: 0 off, 1 12 kHz, 2 8 kHz, 3 5 kHz, 4 3 kHz */
+	int out_classic = 0;     /* 0 BOARD output stage (control-board filter, full headroom), 1 CLASSIC (old output) */
 	int font_mode = 0;       /* menu font: 0 auto (font.bmp, then character ROM, then built-in), 1 ROM only, 2 built-in */
 	int font_alpha = -1, font_digit = -1;   /* force the tile number of 'A' / '0' in the character ROM (-1 = detect) */
 };
@@ -1250,6 +1292,7 @@ static void settings_load(Settings &s)
 		else if (k == "bass_soft") s.bass_soft = clampi(v, 0, 1);
 		else if (k == "vol_gorilla") s.vol_gor = clampi(v, 0, 200);
 		else if (k == "treble") s.treble = clampi(v, 0, 4);
+		else if (k == "out_classic") s.out_classic = clampi(v, 0, 1);
 		else if (k == "font_mode") s.font_mode = clampi(v, 0, 2);
 		else if (k == "font_alpha") s.font_alpha = clampi(v, -1, 230);
 		else if (k == "font_digit") s.font_digit = clampi(v, -1, 246);
@@ -1264,9 +1307,9 @@ static void settings_save(const Settings &s)
 	fprintf(f, "window_scale=%d\ncrt_look=%d\ncrt_curve=%d\ncrt_corner=%d\ncrt_scan=%d\ncrt_mask=%d\ncrt_glow=%d\ncrt_vignette=%d\ncrt_bright=%d\n",
 	        s.window_scale, s.crt_look, s.crt_custom.curve, s.crt_custom.corner, s.crt_custom.scan, s.crt_custom.mask, s.crt_custom.glow, s.crt_custom.vig, s.crt_custom.bright);
 	fprintf(f, "fullscreen=%d\ninteger_scale=%d\ncrt=%d\nrotate=%d\nshow_fps=%d\n"
-	           "vol_master=%d\nvol_psg=%d\nvol_drums=%d\nvol_gorilla=%d\nvol_bass=%d\nbass_soft=%d\ntreble=%d\nfont_mode=%d\nfont_alpha=%d\nfont_digit=%d\n",
+	           "vol_master=%d\nvol_psg=%d\nvol_drums=%d\nvol_gorilla=%d\nvol_bass=%d\nbass_soft=%d\ntreble=%d\nout_classic=%d\nfont_mode=%d\nfont_alpha=%d\nfont_digit=%d\n",
 	        s.fullscreen, s.integer_scale, s.crt, s.rotate, s.show_fps,
-	        s.vol_master, s.vol_psg, s.vol_perc, s.vol_gor, s.vol_bass, s.bass_soft, s.treble, s.font_mode, s.font_alpha, s.font_digit);
+	        s.vol_master, s.vol_psg, s.vol_perc, s.vol_gor, s.vol_bass, s.bass_soft, s.treble, s.out_classic, s.font_mode, s.font_alpha, s.font_digit);
 	fclose(f);
 }
 
@@ -2084,6 +2127,7 @@ int main(int argc, char **argv)
 		m.volume = st.vol_master / 100.0f;
 		m.vol_psg = st.vol_psg / 100.0; m.vol_perc = st.vol_perc / 100.0; m.vol_gor = st.vol_gor / 100.0; m.vol_bass = st.vol_bass / 100.0; m.bass_soft = st.bass_soft != 0;
 		if (st.treble != last_treble) { m.set_treble(st.treble); last_treble = st.treble; }
+		m.out_classic = st.out_classic != 0;
 	};
 	apply_audio();
 
@@ -2253,7 +2297,7 @@ int main(int argc, char **argv)
 		case PG_MAIN: return 7;
 		case PG_VIDEO: return 9;
 		case PG_CRT: return 9;
-		case PG_AUDIO: return 9;
+		case PG_AUDIO: return 10;
 		case PG_CHEATS: return (int)cheats.size() + 4;
 		case PG_FIND: return 9;
 		case PG_RESULTS: return std::max(1, std::min((int)cand.size(), 999));
@@ -2352,11 +2396,12 @@ int main(int argc, char **argv)
 			case 4: vol(st.vol_gor); break;
 			case 5: st.treble = (st.treble + 5 + dd) % 5; apply_audio(); break;
 			case 6: st.bass_soft ^= 1; apply_audio(); break;
-			case 7:
+			case 7: st.out_classic ^= 1; apply_audio(); break;
+			case 8:
 				if (d) test_idx = (test_idx + N_TEST + d) % N_TEST;
 				else { m.ppi.latch = 0x30; test_stage = 12; }     /* stop (command 0x30), then play */
 				break;
-			case 8: if (act) change_page(PG_MAIN); break;
+			case 9: if (act) change_page(PG_MAIN); break;
 			}
 		} else if (page == PG_CHEATS) {
 			const int nc = (int)cheats.size();
@@ -2507,8 +2552,8 @@ int main(int argc, char **argv)
 			desc = descs[sel];
 		} else if (page == PG_VIDEO || page == PG_AUDIO) {
 			struct Row { const char *label; char val[24]; };
-			Row rows[9]; const char *descs[9];
-			const int nrows = 9;
+			Row rows[10]; const char *descs[10];
+			const int nrows = page == PG_AUDIO ? 10 : 9;
 			auto setv = [&](int i, const char *l, const char *v, const char *d) {
 				rows[i].label = l; snprintf(rows[i].val, sizeof rows[i].val, "%s", v); descs[i] = d; };
 			if (page == PG_VIDEO) {
@@ -2531,11 +2576,12 @@ int main(int argc, char **argv)
 				snprintf(t, sizeof t, "%d%%", st.vol_bass);   setv(3, "BASS DRUM", t, "0 = SILENT, TIMING KEPT");
 				snprintf(t, sizeof t, "%d%%", st.vol_gor);    setv(4, "GORILLA", t, "THE GORILLA GROWL");
 				static const char *trn[] = { "OFF", "12 KHZ", "8 KHZ", "5 KHZ", "3 KHZ" };
-				setv(5, "TREBLE CUT", trn[st.treble], "SOFTENS HARSH HISS");
+				setv(5, "SPEAKER CUT", trn[st.treble], "EXTRA LOW-PASS, LIKE A SPEAKER");
 				setv(6, "BASS EDGE", st.bass_soft ? "SOFT" : "SHARP", "SOFT REMOVES THE CLICK");
+				setv(7, "OUTPUT STAGE", st.out_classic ? "CLASSIC" : "BOARD", "BOARD = ARCADE BOARD FILTER");
 				snprintf(t, sizeof t, "%02X", TEST_CMDS[test_idx]);
-				setv(7, "TEST SOUND", t, "<> PICK  ENTER PLAYS");
-				setv(8, "BACK", "", "");
+				setv(8, "TEST SOUND", t, "<> PICK  ENTER PLAYS");
+				setv(9, "BACK", "", "");
 			}
 			const float step = std::min(14.0f, (H - top - 44) / (float)nrows), y0 = top;
 			for (int i = 0; i < nrows; i++) {
