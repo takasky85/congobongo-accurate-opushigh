@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -57,11 +58,19 @@ jobs:
       - name: Create Zip Archive
         shell: pwsh
         run: |
-          Compress-Archive -Path congobongo.exe, SDL3.dll, libwinpthread-1.dll, libiconv-2.dll -DestinationPath congobongo-windows.zip -Force
+          Compress-Archive -Path congobongo.exe, SDL3.dll, libwinpthread-1.dll, libiconv-2.dll -DestinationPath congobongo-accurate-windows.zip -Force
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: congobongo-accurate-windows
+          path: congobongo-accurate-windows.zip
 
       - name: Create Release and Upload Assets
+        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
           files: |
-            congobongo-windows.zip
+            congobongo-accurate-windows.zip
